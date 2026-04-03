@@ -1,0 +1,25 @@
+name: 每日A股自动选股
+on:
+  schedule:
+    - cron: "0 1 * * *"  # 🔥 北京时间 9:00 运行（你要的开盘前）
+  workflow_dispatch:     # 支持手动点击运行
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 设置Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install openbb
+
+      - name: 执行选股+发邮件
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVERS: ${{ secrets.EMAIL_RECEIVERS }}
+        run: python daily_pick.py
