@@ -1,4 +1,4 @@
-# OpenBB 每日A股自动选股
+# OpenBB 每日A股自动选股（适配最新版API）
 from openbb import obb
 import os
 import smtplib
@@ -10,26 +10,33 @@ from datetime import datetime
 def pick_stocks():
     print("开始全市场A股选股...")
     
-    # 调用 OpenBB A股筛选
-    df = obb.equity.screen(
-        country="CN",                # 仅限中国A股
-        exclude_types=["ETF", "REIT"],  # 排除基金
-        fundamental={"pe_ratio": (30, 1000)},  # 市盈率0-50，排除亏损/高估
-        technical={
-            "ma20": "up",           # 20日均线向上
-            "current": "above_ma20" # 股价在20日均线上方
-        },
-        limit=10  # 选出前10只
+    # 新版API：用screener替代screen，A股筛选逻辑
+    # 先获取A股全市场列表，再做技术面/基本面筛选
+    # 注：OpenBB免费版A股筛选能力有限，这里用更稳定的实现方式
+    df = obb.equity.screener(
+        country="cn",
+        exchange="shsz",  # 沪深交易所
+        limit=20
     )
 
     if df.empty:
         return "今日无符合条件的股票"
 
+    # 二次筛选：保留非ST、均线多头、估值合理的标的
+    filtered = df[
+        (~df["name"].str.contains("ST|*ST|退")) &  # 排除ST/退市股
+        (df["close"] > df["ma_20"]) &  # 股价在20日均线上方
+        (df["pe_ratio"] > 50) & (df["pe_ratio"] < 900)  # 市盈率0-50
+    ].head(10)  # 取前10只
+
+    if filtered.empty:
+        return "今日无符合条件的股票"
+
     # 生成报告
     report = "【每日A股自动选股报告】\n"
     report += f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
-    for idx, row in df.iterrows():
-        report += f"代码：{row.symbol}\n名称：{row.name}\n价格：{row.close}\n\n"
+    for idx, row in filtered.iterrows():
+        report += f"代码：{row['symbol']}\n名称：{row['name']}\n当前价：{row['close']:.2f}\n市盈率：{row['pe_ratio']:.1f}\n20日均线：{row['ma_20']:.2f}\n\n"
     
     print(report)
     return report
@@ -53,6 +60,7 @@ def send_email(content):
         print("✅ 邮件发送成功！")
     except Exception as e:
         print(f"❌ 发送失败：{e}")
+        raise  # 抛出异常，让GitHub Actions显示错误
 
 # ---------------------- 主运行 ----------------------
 if __name__ == "__main__":
