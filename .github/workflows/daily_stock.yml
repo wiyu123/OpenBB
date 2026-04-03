@@ -1,4 +1,4 @@
-name: 每日A股自动选股
+name: daily-selection
 on:
   schedule:
     - cron: "0 1 * * *"  # 🔥 北京时间 9:00 运行（你要的开盘前）
