@@ -24,6 +24,9 @@ jobs:
       - name: 安装OpenBB
         run: pip install openbb --upgrade
 
+      - name: 安装依赖
+        run: pip install akshare pandas
+
       - name: 执行选股+发邮件
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
